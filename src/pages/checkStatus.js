@@ -26,6 +26,19 @@ function CheckStatus() {
 
   useEffect(() => {
     if (!users || users.length === 0) return;
+    const payload = {
+    filterFieldParams: [
+      { key: "companyShare.companyIssue.companyISIN.script", alias: "Scrip" },
+      { key: "companyShare.companyIssue.companyISIN.company.name", alias: "Company Name" },
+    ],
+    page: 1,
+    size: 200,
+    searchRoleViewConstants: "VIEW_APPLICANT_FORM_COMPLETE",
+    filterDateParams: [
+      { key: "appliedDate", condition: "", alias: "", value: "" },
+      { key: "appliedDate", condition: "", alias: "", value: "" },
+    ],
+  };
 
     const fetchReportData = async () => {
       try {
