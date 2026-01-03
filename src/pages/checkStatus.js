@@ -159,6 +159,7 @@ function CheckStatus() {
       //Check if already verified
       const clientKey = `${clientId}_${username}`;
       if (verifiedUsers.includes(clientKey)) { 
+        await new Promise((resolve) => setTimeout(resolve, 300));
         totalChecked++;
         totalVerified++;
         setFinalresult((prev) => [...prev, { name, statusName: "Already Verified (History)", allotedKitta: 0 }]);
