@@ -8,7 +8,6 @@ import { useCallback } from "react";
 
 function ApplyIpo() {
   const backendBaseLink=process.env.REACT_APP_BACKEND_BASE_LINK;
-  console.log(backendBaseLink)
   const stopRef = useRef(false);
   const mountedRef = useRef(true);
   const navigate = useNavigate();
@@ -20,6 +19,7 @@ function ApplyIpo() {
   const [applyKitta, setApplyKitta] = useState("");
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [summary, setSummary] = useState({ total:0, AppliedNow:0, AlreadyApplied:0,  });
 
 
   const token = localStorage.getItem("token");
@@ -181,7 +181,7 @@ function ApplyIpo() {
           }
         );
         if (!mountedRef.current) return;
-        console.log((loginRes.data))
+        
         if(loginRes.data.accountExpired===true|| loginRes.data.changePassword===true ||loginRes.data.dematExpired===true || loginRes.data.isTransactionPINNotSetBefore===true || loginRes.data.isTransactionPINReset===true ||loginRes.data.passwordExpired===true)
           {
             setResults(prev => [...prev, { name, status: "error", message: loginRes.data.message }]);

@@ -214,7 +214,7 @@ function CheckStatus() {
             const allotedKitta = res3.data.receivedKitta || 0;
             const stageName = res3.data.stageName || "";
 
-            if (stageName === "SHARED_RESULT_UPLOADED") {
+            if (stageName === "SHARED_RESULT_UPLOADED" || stageName === "ALLOTMENT_RESULT_APPROVED") {
               setIsAllotmentDone(true);
 
               if (statusName === "Alloted") {
