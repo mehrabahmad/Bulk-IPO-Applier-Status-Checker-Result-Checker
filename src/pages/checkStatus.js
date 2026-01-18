@@ -130,18 +130,15 @@ function CheckStatus() {
     let totalUnverified = 0;
     let totalRejected = 0;
 
-    let resultOut = false;
+ 
     const getCompanyName = (companyId) => {
       const company = applicationReportList.find(
         (c) => c.companyShareId.toString() === companyId.toString()
       );
-      const status =applicationReportList.find(
-        (c) => c.statusName.toString() === companyId.toString()
-      );
+      
       return company ? company.companyName : "Unknown Company";
     };
-    alert(resultOut)
-    console.log(resultOut)
+  
     setCompanyName(getCompanyName(selectedCompanyId));
 
     setSummary({ total: totalUsers, checked: 0, verified: 0, unverified: 0, rejected: 0, alloted: 0 });
