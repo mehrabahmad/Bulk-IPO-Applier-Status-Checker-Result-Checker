@@ -28,5 +28,15 @@
         "code": "14400",
         "id": 185,
         "name": "SANI SECURITIES COMPANY LIMITED"
+    },
+    {
+        "code": "15900",
+        "id": 163,
+        "name": "NAASA SECURITIES COMPANY LTD"
+    },
+    {
+        "code": "11000",
+        "id": 175,
+        "name": "NMB CAPITAL LIMITED"
     }
 ]
