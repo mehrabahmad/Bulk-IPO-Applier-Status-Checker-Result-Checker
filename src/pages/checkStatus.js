@@ -70,7 +70,7 @@ function CheckStatus() {
       }
     };
     fetchUsers();
-  }, [navigate, token]);
+  }, [API, navigate, token]);
 
   /* ================= FETCH COMPANY LIST ================= */
   useEffect(() => {
