@@ -71,7 +71,7 @@ function ApplyIpo() {
       }
     };
     fetchUsers();
-  }, [ token, backendBaseLink]);
+  }, [ token,navigate, backendBaseLink]);
 
   // Login function for first user
   const login = useCallback(async () => {
