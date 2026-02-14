@@ -19,7 +19,7 @@ function ApplyIpo() {
   const [applyKitta, setApplyKitta] = useState("");
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [summary, setSummary] = useState({ total:0, AppliedNow:0, AlreadyApplied:0,  });
+  // const [summary, setSummary] = useState({ total:0, AppliedNow:0, AlreadyApplied:0,  });
 
 
   const token = localStorage.getItem("token");
