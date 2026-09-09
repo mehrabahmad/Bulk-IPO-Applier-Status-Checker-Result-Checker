@@ -1,48 +1,56 @@
-import React, { useEffect, useState, useRef } from 'react';
-import axios from 'axios';
+import React, {
+  useEffect,
+  useState,
+  useRef,
+  useCallback,
+} from "react";
+import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import { useCallback } from "react";
-
-
-
 
 function ApplyIpo() {
-  const backendBaseLink=process.env.REACT_APP_BACKEND_BASE_LINK;
+  const backendBaseLink =
+    process.env.REACT_APP_BACKEND_BASE_LINK;
+
   const stopRef = useRef(false);
   const mountedRef = useRef(true);
+
   const navigate = useNavigate();
 
-  // STATE
   const [users, setUsers] = useState([]);
   const [currentOpening, setCurrentOpening] = useState([]);
-  const [selectedCompanyId, setSelectedCompanyId] = useState("");
+  const [selectedCompanyId, setSelectedCompanyId] =
+    useState("");
   const [applyKitta, setApplyKitta] = useState("");
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
-  // const [summary, setSummary] = useState({ total:0, AppliedNow:0, AlreadyApplied:0,  });
-
 
   const token = localStorage.getItem("token");
 
-  //Saving Applied Users function
-  const saveAppliedUsers = async (companyId, clientId, username ) => {
-    // Record applied IPO in backend
-        try {await axios.post(`${backendBaseLink}/applyHistory/insertRecordofAppliedIpo`,
-            {
-              companyId,
-              clientId,
-              username
-            }
-          );
-        } catch (err) {
-          alert("Something went wrong");
+  // =========================================================
+  // SAVE APPLIED USERS
+  // =========================================================
+  const saveAppliedUsers = async (
+    companyId,
+    clientId,
+    username
+  ) => {
+    try {
+      await axios.post(
+        `${backendBaseLink}/applyHistory/insertRecordofAppliedIpo`,
+        {
+          companyId,
+          clientId,
+          username,
         }
-  }
+      );
+    } catch (err) {
+      alert("Something went wrong");
+    }
+  };
 
-
-
-
-  // 🔴 CLEANUP ON UNMOUNT
+  // =========================================================
+  // COMPONENT UNMOUNT
+  // =========================================================
   useEffect(() => {
     return () => {
       stopRef.current = true;
@@ -50,30 +58,47 @@ function ApplyIpo() {
     };
   }, [backendBaseLink]);
 
-  // Fetch users
+  // =========================================================
+  // FETCH USERS
+  // =========================================================
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        console.log(backendBaseLink)
-        const res = await axios.get(`${backendBaseLink}/users`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const res = await axios.get(
+          `${backendBaseLink}/users`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
 
         if (!mountedRef.current) return;
+
         setUsers(res.data);
 
         if (res.data.length === 0) {
-          alert("No users found. Please add users first.");
+          alert(
+            "No users found. Please add users first."
+          );
+
           navigate("/users");
         }
-      } catch {
+      } catch (err) {
         navigate("/");
       }
     };
-    fetchUsers();
-  }, [ token,navigate, backendBaseLink]);
 
-  // Login function for first user
+    fetchUsers();
+  }, [
+    token,
+    navigate,
+    backendBaseLink,
+  ]);
+
+  // =========================================================
+  // LOGIN FIRST USER
+  // =========================================================
   const login = useCallback(async () => {
     const res = await axios.post(
       "https://webbackend.cdsc.com.np/api/meroShare/auth/",
@@ -83,298 +108,1445 @@ function ApplyIpo() {
         password: users[0].password,
       }
     );
+
     return res.headers["authorization"];
   }, [users]);
 
-  // Fetch current IPO opening
+  // =========================================================
+  // FETCH CURRENT OPENING IPO
+  // =========================================================
   useEffect(() => {
     if (users.length === 0) return;
 
     const fetchOpening = async () => {
       try {
         const savedToken = await login();
+
         const payload = {
           filterFieldParams: [
-            { key: "companyIssue.companyISIN.script", alias: "Scrip" },
-            { key: "companyIssue.companyISIN.company.name", alias: "Company Name" },
-            { key: "companyIssue.assignedToClient.name", alias: "Issue Manager", value: "" }
+            {
+              key: "companyIssue.companyISIN.script",
+              alias: "Scrip",
+            },
+            {
+              key: "companyIssue.companyISIN.company.name",
+              alias: "Company Name",
+            },
+            {
+              key: "companyIssue.assignedToClient.name",
+              alias: "Issue Manager",
+              value: "",
+            },
           ],
+
           page: 1,
           size: 10,
-          searchRoleViewConstants: "VIEW_APPLICABLE_SHARE",
+
+          searchRoleViewConstants:
+            "VIEW_APPLICABLE_SHARE",
+
           filterDateParams: [
-            { key: "minIssueOpenDate", value: "" },
-            { key: "maxIssueCloseDate", value: "" }
-          ]
+            {
+              key: "minIssueOpenDate",
+              value: "",
+            },
+            {
+              key: "maxIssueCloseDate",
+              value: "",
+            },
+          ],
         };
 
         const res = await axios.post(
           "https://webbackend.cdsc.com.np/api/meroShare/companyShare/applicableIssue/",
           payload,
-          { headers: { authorization: savedToken } }
+          {
+            headers: {
+              authorization: savedToken,
+            },
+          }
         );
 
         if (!mountedRef.current) return;
+
         setCurrentOpening(res.data.object);
       } catch (err) {
-        console.log("Error fetching openings:", err.message);
+        console.log(
+          "Error fetching openings:",
+          err.message
+        );
       }
     };
 
     fetchOpening();
   }, [users, login]);
 
-  // Apply IPO for each user
+  // =========================================================
+  // APPLY IPO
+  // =========================================================
   const handleApplyButton = async () => {
     stopRef.current = false;
 
-    if (!selectedCompanyId) return alert("Select Company First");
-    if (!(applyKitta > 0 && applyKitta % 10 === 0))
-      return alert("Applied Kitta must be multiple of 10");
+    // -------------------------------------------------------
+    // VALIDATE COMPANY
+    // -------------------------------------------------------
+    if (!selectedCompanyId) {
+      return alert("Select Company First");
+    }
+
+    // -------------------------------------------------------
+    // VALIDATE KITTA
+    // -------------------------------------------------------
+    if (
+      !(applyKitta > 0 && applyKitta % 10 === 0)
+    ) {
+      return alert(
+        "Applied Kitta must be multiple of 10"
+      );
+    }
 
     setResults([]);
     setLoading(true);
 
+    try {
+      // =====================================================
+      // GET APPLICATION HISTORY
+      // =====================================================
+      const res = await axios.get(
+        `${backendBaseLink}/applyHistory/${selectedCompanyId}`
+      );
 
-    const res = await axios.get(
-      `${backendBaseLink}/applyHistory/${selectedCompanyId}`
-    );
-    const appliedUsers = res.data;
-    console.log(res.data)
-    console.log(typeof(appliedUsers))
-    console.log(Array.isArray(appliedUsers))
-    
+      const appliedUsers = res.data;
 
-    for (let i = 0; i < users.length; i++) {
-      if (stopRef.current) break;
+      console.log(
+        "Applied users:",
+        appliedUsers
+      );
 
-      const user = users[i];
-      const name = user.name;
-      const crnNumber = user.crn;
-      const transactionPIN = user.pin;
-      
+      console.log(
+        "Type:",
+        typeof appliedUsers
+      );
 
-      //Check if already applied
-      const clientKey = `${user.clientId}_${user.username}`;
-      if (appliedUsers.includes(clientKey)) {
-        await new Promise(r => setTimeout(r, 300));
-        if (mountedRef.current) setResults(prev => [...prev, { name, status: "success", message: "Already Applied (History)" }]);
-        continue;
-      }
+      console.log(
+        "Is Array:",
+        Array.isArray(appliedUsers)
+      );
 
-
-      // Delay 8 sec for each user
-      for (let t = 0; t < 10; t++) {
+      // =====================================================
+      // PROCESS USERS ONE BY ONE
+      // =====================================================
+      for (
+        let i = 0;
+        i < users.length;
+        i++
+      ) {
         if (stopRef.current) break;
-        await new Promise(r => setTimeout(r, 1000));
-      }
 
-      if (stopRef.current) break;
+        const user = users[i];
 
-      try {
-        const loginRes = await axios.post(
-          "https://webbackend.cdsc.com.np/api/meroShare/auth/",
-          {
-            clientId: user.clientId,
-            username: user.username,
-            password: user.password,
-          }
-        );
-        if (!mountedRef.current) return;
-        
-        if(loginRes.data.accountExpired===true|| loginRes.data.changePassword===true ||loginRes.data.dematExpired===true || loginRes.data.isTransactionPINNotSetBefore===true || loginRes.data.isTransactionPINReset===true ||loginRes.data.passwordExpired===true)
-          {
-            setResults(prev => [...prev, { name, status: "error", message: loginRes.data.message }]);
-            continue;
-        }
+        const name = user.name;
+        const crnNumber = user.crn;
+        const transactionPIN = user.pin;
 
-        const savedToken = loginRes.headers["authorization"];
+        const clientKey = `${user.clientId}_${user.username}`;
 
+        // ===================================================
+        // ALREADY APPLIED IN OUR HISTORY
+        // ===================================================
+        if (appliedUsers.includes(clientKey)) {
+          await new Promise((r) =>
+            setTimeout(r, 300)
+          );
 
-        // Fetch own detail
-        const detailRes = await axios.get(
-          "https://webbackend.cdsc.com.np/api/meroShare/ownDetail/",
-          { headers: { authorization: savedToken } }
-        );
-        const dematNumber = detailRes.data?.demat;
-
-        const payload1 = {
-          filterFieldParams: [
-            { key: "companyIssue.companyISIN.script", alias: "Scrip" },
-            { key: "companyIssue.companyISIN.company.name", alias: "Company Name" },
-            { key: "companyIssue.assignedToClient.name", alias: "Issue Manager", value: "" }
-          ],
-          page: 1,
-          size: 10,
-          searchRoleViewConstants: "VIEW_APPLICABLE_SHARE",
-          filterDateParams: [
-            { key: "minIssueOpenDate", value: "" },
-            { key: "maxIssueCloseDate", value: "" }
-          ]
-        };
-
-        const applicableIssueListRes = await axios.post(
-          "https://webbackend.cdsc.com.np/api/meroShare/companyShare/applicableIssue/",
-          payload1,
-          { headers: { authorization: savedToken } }
-        );
-
-        const applicableCompanyDetail = applicableIssueListRes.data.object.find(item => item.companyShareId === Number(selectedCompanyId));
-
-        if ("action" in applicableCompanyDetail) {
-          if (applicableCompanyDetail.action === "inProcess" || applicableCompanyDetail.action === "edit") {
-            if (mountedRef.current) setResults(prev => [...prev, { name, status: "success", message: "Already Applied" }]);
+          if (mountedRef.current) {
+            setResults((prev) => [
+              ...prev,
+              {
+                name,
+                status: "success",
+                message:
+                  "Already Applied (History)",
+              },
+            ]);
           }
 
-          if (applicableCompanyDetail.action === "reapply") {
-            if (mountedRef.current) setResults(prev => [...prev, { name, status: "error", message: "Reapply" }]);
-          }
-          await saveAppliedUsers(selectedCompanyId, user.clientId, user.username);
-          continue
-        }
-
-        // Fetch bank info
-        const bankRes = await axios.get(
-          "https://webbackend.cdsc.com.np/api/meroShare/bank/",
-          { headers: { authorization: savedToken } }
-        );
-        let selectedBankId = bankRes.data[0]?.id;
-        if (bankRes.data.length === 2) {
-          selectedBankId = bankRes.data[1]?.id;
-        }
-
-        // Check applicability
-        const applicableRes = await axios.get(
-          `https://webbackend.cdsc.com.np/api/meroShare/applicantForm/customerType/${selectedCompanyId}/${dematNumber}`,
-          { headers: { authorization: savedToken } }
-        );
-        if (applicableRes.data.message !== "Customer can apply.") {
-          if (mountedRef.current) setResults(prev => [...prev, { name, status: "error", message: applicableRes.data.message }]);
           continue;
         }
 
-        // Fetch bank details
-        const bankDetailRes = await axios.get(
-          `https://webbackend.cdsc.com.np/api/meroShare/bank/${selectedBankId}`,
-          { headers: { authorization: savedToken } }
-        );
-        const bd = bankDetailRes.data[0];
+        // ===================================================
+        // WAIT 10 SECONDS
+        // ===================================================
+        for (let t = 0; t < 10; t++) {
+          if (stopRef.current) break;
 
-        // Final payload
-        const payload = {
-          accountBranchId: bd?.accountBranchId,
-          accountNumber: bd?.accountNumber,
-          accountTypeId: bd?.accountTypeId,
-          appliedKitta: applyKitta,
-          bankId: String(selectedBankId),
-          boid: String(dematNumber).slice(-8),
-          companyShareId: selectedCompanyId,
-          crnNumber,
-          customerId: bd?.id,
-          demat: dematNumber,
-          transactionPIN,
-        };
-
-
-        // Submit IPO
-        const submitRes = await axios.post(
-          "https://webbackend.cdsc.com.np/api/meroShare/applicantForm/share/apply",
-          payload,
-          { headers: { authorization: savedToken, "Content-Type": "application/json" } }
-        );
-
-        if (mountedRef.current) {
-          setResults(prev => [...prev, { name, status: submitRes.status === 201 ? "success" : "error", message: submitRes.data.message || "Something went wrong" }]);
+          await new Promise((r) =>
+            setTimeout(r, 1000)
+          );
         }
 
-        // Record applied IPO in backend
-        await saveAppliedUsers(selectedCompanyId, user.clientId, user.username);
+        if (stopRef.current) break;
 
+        try {
+          // =================================================
+          // LOGIN USER
+          // =================================================
+          const loginRes = await axios.post(
+            "https://webbackend.cdsc.com.np/api/meroShare/auth/",
+            {
+              clientId: user.clientId,
+              username: user.username,
+              password: user.password,
+            }
+          );
 
+          if (!mountedRef.current) return;
 
-      } catch (err) {
-        if (!mountedRef.current) return;
-        setResults(prev => [...prev, { name, status: "error", message: err.response?.data?.message || err.message }]);
+          // =================================================
+          // ACCOUNT STATUS CHECK
+          // =================================================
+          if (
+            loginRes.data.accountExpired ===
+              true ||
+            loginRes.data.changePassword ===
+              true ||
+            loginRes.data.dematExpired ===
+              true ||
+            loginRes.data
+              .isTransactionPINNotSetBefore ===
+              true ||
+            loginRes.data
+              .isTransactionPINReset === true ||
+            loginRes.data.passwordExpired ===
+              true
+          ) {
+            setResults((prev) => [
+              ...prev,
+              {
+                name,
+                status: "error",
+                message:
+                  loginRes.data.message ||
+                  "Account cannot be used",
+              },
+            ]);
+
+            continue;
+          }
+
+          const savedToken =
+            loginRes.headers["authorization"];
+
+          // =================================================
+          // GET DEMAT DETAILS
+          // =================================================
+          const detailRes = await axios.get(
+            "https://webbackend.cdsc.com.np/api/meroShare/ownDetail/",
+            {
+              headers: {
+                authorization: savedToken,
+              },
+            }
+          );
+
+          const dematNumber =
+            detailRes.data?.demat;
+
+          // =================================================
+          // GET APPLICABLE IPO LIST
+          // =================================================
+          const payload1 = {
+            filterFieldParams: [
+              {
+                key: "companyIssue.companyISIN.script",
+                alias: "Scrip",
+              },
+              {
+                key: "companyIssue.companyISIN.company.name",
+                alias: "Company Name",
+              },
+              {
+                key: "companyIssue.assignedToClient.name",
+                alias: "Issue Manager",
+                value: "",
+              },
+            ],
+
+            page: 1,
+            size: 10,
+
+            searchRoleViewConstants:
+              "VIEW_APPLICABLE_SHARE",
+
+            filterDateParams: [
+              {
+                key: "minIssueOpenDate",
+                value: "",
+              },
+              {
+                key: "maxIssueCloseDate",
+                value: "",
+              },
+            ],
+          };
+
+          const applicableIssueListRes =
+            await axios.post(
+              "https://webbackend.cdsc.com.np/api/meroShare/companyShare/applicableIssue/",
+              payload1,
+              {
+                headers: {
+                  authorization: savedToken,
+                },
+              }
+            );
+
+          const applicableCompanyDetail =
+            applicableIssueListRes.data.object?.find(
+              (item) =>
+                item.companyShareId ===
+                Number(selectedCompanyId)
+            );
+
+          // =================================================
+          // CHECK EXISTING APPLICATION
+          // =================================================
+          if (
+            applicableCompanyDetail &&
+            "action" in
+              applicableCompanyDetail
+          ) {
+            // -----------------------------------------------
+            // ALREADY APPLIED
+            // -----------------------------------------------
+            if (
+              applicableCompanyDetail.action ===
+                "inProcess" ||
+              applicableCompanyDetail.action ===
+                "edit"
+            ) {
+              if (mountedRef.current) {
+                setResults((prev) => [
+                  ...prev,
+                  {
+                    name,
+                    status: "success",
+                    message:
+                      "Already Applied",
+                  },
+                ]);
+              }
+            }
+
+            // -----------------------------------------------
+            // REAPPLY
+            // -----------------------------------------------
+            if (
+              applicableCompanyDetail.action ===
+              "reapply"
+            ) {
+              if (mountedRef.current) {
+                setResults((prev) => [
+                  ...prev,
+                  {
+                    name,
+                    status: "error",
+                    message: "Reapply",
+                  },
+                ]);
+              }
+            }
+
+            await saveAppliedUsers(
+              selectedCompanyId,
+              user.clientId,
+              user.username
+            );
+
+            continue;
+          }
+
+          // =================================================
+          // GET BANK LIST
+          // =================================================
+          const bankRes = await axios.get(
+            "https://webbackend.cdsc.com.np/api/meroShare/bank/",
+            {
+              headers: {
+                authorization: savedToken,
+              },
+            }
+          );
+
+          let selectedBankId =
+            bankRes.data[0]?.id;
+
+          if (bankRes.data.length === 2) {
+            selectedBankId =
+              bankRes.data[1]?.id;
+          }
+
+          // =================================================
+          // CHECK CUSTOMER TYPE
+          // =================================================
+          const applicableRes =
+            await axios.get(
+              `https://webbackend.cdsc.com.np/api/meroShare/applicantForm/customerType/${selectedCompanyId}/${dematNumber}`,
+              {
+                headers: {
+                  authorization: savedToken,
+                },
+              }
+            );
+
+          if (
+            applicableRes.data.message !==
+            "Customer can apply."
+          ) {
+            if (mountedRef.current) {
+              setResults((prev) => [
+                ...prev,
+                {
+                  name,
+                  status: "error",
+                  message:
+                    applicableRes.data.message ||
+                    "Customer cannot apply",
+                },
+              ]);
+            }
+
+            continue;
+          }
+
+          // =================================================
+          // GET BANK DETAILS
+          // =================================================
+          const bankDetailRes =
+            await axios.get(
+              `https://webbackend.cdsc.com.np/api/meroShare/bank/${selectedBankId}`,
+              {
+                headers: {
+                  authorization: savedToken,
+                },
+              }
+            );
+
+          const bd =
+            bankDetailRes.data[0];
+
+          // =================================================
+          // APPLICATION PAYLOAD
+          // =================================================
+          const payload = {
+            accountBranchId:
+              bd?.accountBranchId,
+
+            accountNumber:
+              bd?.accountNumber,
+
+            accountTypeId:
+              bd?.accountTypeId,
+
+            appliedKitta: applyKitta,
+
+            bankId: String(
+              selectedBankId
+            ),
+
+            boid: String(
+              dematNumber
+            ).slice(-8),
+
+            companyShareId:
+              selectedCompanyId,
+
+            crnNumber,
+
+            customerId: bd?.id,
+
+            demat: dematNumber,
+
+            transactionPIN,
+          };
+
+          // =================================================
+          // SUBMIT APPLICATION
+          // =================================================
+          const submitRes =
+            await axios.post(
+              "https://webbackend.cdsc.com.np/api/meroShare/applicantForm/share/apply",
+              payload,
+              {
+                headers: {
+                  authorization: savedToken,
+                  "Content-Type":
+                    "application/json",
+                },
+              }
+            );
+
+          // =================================================
+          // APPLICATION RESULT
+          // =================================================
+          if (mountedRef.current) {
+            setResults((prev) => [
+              ...prev,
+              {
+                name,
+
+                status:
+                  submitRes.status === 201
+                    ? "success"
+                    : "error",
+
+                message:
+                  submitRes.data.message ||
+                  "Something went wrong",
+              },
+            ]);
+          }
+
+          // =================================================
+          // SAVE APPLICATION HISTORY
+          // =================================================
+          await saveAppliedUsers(
+            selectedCompanyId,
+            user.clientId,
+            user.username
+          );
+        } catch (err) {
+          if (!mountedRef.current) return;
+
+          setResults((prev) => [
+            ...prev,
+            {
+              name,
+              status: "error",
+              message:
+                err.response?.data?.message ||
+                err.message ||
+                "Something went wrong",
+            },
+          ]);
+        }
+
+        if (stopRef.current) break;
+
+        await new Promise((resolve) =>
+          setTimeout(resolve, 500)
+        );
       }
-
-      if (stopRef.current) break;
-      await new Promise(resolve => setTimeout(resolve, 500));
+    } catch (err) {
+      if (mountedRef.current) {
+        setResults((prev) => [
+          ...prev,
+          {
+            name: "System",
+            status: "error",
+            message:
+              err.response?.data?.message ||
+              err.message ||
+              "Something went wrong",
+          },
+        ]);
+      }
     }
 
-    if (mountedRef.current) setLoading(false);
+    if (mountedRef.current) {
+      setLoading(false);
+    }
   };
 
-
-  const handleChangeOfSelectedCompany = async (e) => {
+  // =========================================================
+  // COMPANY CHANGE
+  // =========================================================
+  const handleChangeOfSelectedCompany = (
+    e
+  ) => {
     const selectedValue = e.target.value;
-    setSelectedCompanyId(selectedValue);
 
-    if (!selectedValue) return;
+    setSelectedCompanyId(
+      selectedValue
+    );
+  };
 
-  }
+  // =========================================================
+  // UI
+  // =========================================================
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-100 to-slate-200">
-      {/* ===== NAVBAR ===== */}
-      <header className="sticky top-0 z-50 bg-white/80 backdrop-blur shadow-sm">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
-          <h1 onClick={() => { stopRef.current = true; navigate("/home"); }} className="text-xl font-bold text-blue-600 cursor-pointer hover:opacity-80">
-            IPO Dashboard
-          </h1>
-          <div className="flex gap-3">
-            <button onClick={() => { stopRef.current = true; navigate("/home"); }} className="px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium transition">Home</button>
-            <button onClick={() => { stopRef.current = true; localStorage.removeItem("token"); navigate("/", { replace: true }); }} className="px-4 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white font-medium transition">Logout</button>
+    <div className="min-h-screen bg-gradient-to-br from-slate-100 via-blue-50 to-indigo-100">
+
+      {/* =====================================================
+          HEADER
+      ====================================================== */}
+      <header className="sticky top-0 z-50 border-b border-white/60 bg-white/80 shadow-sm backdrop-blur-xl">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
+
+          {/* Logo */}
+          <button
+            onClick={() => {
+              stopRef.current = true;
+              navigate("/home");
+            }}
+            className="group flex items-center gap-3"
+          >
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-lg font-bold text-white shadow-lg shadow-blue-500/20 transition group-hover:scale-105">
+              IPO
+            </div>
+
+            <div className="text-left">
+              <h1 className="text-lg font-bold text-gray-900">
+                IPO Dashboard
+              </h1>
+
+              <p className="text-xs text-gray-500">
+                Investment Management
+              </p>
+            </div>
+          </button>
+
+          {/* Header Buttons */}
+          <div className="flex items-center gap-2 sm:gap-3">
+
+            <button
+              onClick={() => {
+                stopRef.current = true;
+                navigate("/home");
+              }}
+              className="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 shadow-sm transition hover:border-gray-300 hover:bg-gray-50"
+            >
+              <span className="mr-1">
+                ⌂
+              </span>
+              Home
+            </button>
+
+            <button
+              onClick={() => {
+                stopRef.current = true;
+
+                localStorage.removeItem(
+                  "token"
+                );
+
+                navigate("/", {
+                  replace: true,
+                });
+              }}
+              className="rounded-xl bg-red-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-red-600 hover:shadow-md"
+            >
+              Logout
+            </button>
+
           </div>
         </div>
       </header>
 
-      {/* ===== MAIN CONTENT ===== */}
-      <main className="max-w-5xl mx-auto px-6 py-10">
-        <div className="mb-10 text-center">
-          <h2 className="text-3xl font-extrabold text-gray-800">Apply IPO</h2>
-          <p className="text-gray-500 mt-2">Apply IPO for all registered users in one click</p>
+      {/* =====================================================
+          MAIN
+      ====================================================== */}
+      <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+
+        {/* ===================================================
+            PAGE TITLE
+        ==================================================== */}
+        <div className="mb-8">
+
+          <div className="flex flex-col justify-between gap-5 md:flex-row md:items-end">
+
+            <div>
+
+              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-600">
+                <span className="h-2 w-2 rounded-full bg-blue-500"></span>
+                IPO APPLICATION
+              </div>
+
+              <h2 className="text-3xl font-extrabold tracking-tight text-gray-900 sm:text-4xl">
+                Apply IPO
+              </h2>
+
+              <p className="mt-2 max-w-xl text-sm leading-6 text-gray-500 sm:text-base">
+                Apply for the selected IPO across
+                all your registered users from one
+                place.
+              </p>
+
+            </div>
+
+            {/* Registered Users */}
+            <div className="flex items-center gap-3 rounded-2xl border border-white bg-white px-5 py-4 shadow-lg shadow-gray-200/50">
+
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-50 text-xl">
+                👥
+              </div>
+
+              <div>
+                <p className="text-xs font-medium text-gray-500">
+                  Registered Users
+                </p>
+
+                <p className="text-xl font-bold text-gray-900">
+                  {users.length}
+                </p>
+              </div>
+
+            </div>
+
+          </div>
         </div>
 
+        {/* ===================================================
+            USERS AVAILABLE
+        ==================================================== */}
         {users.length > 0 && (
-          <div className="bg-white rounded-3xl shadow-2xl p-8">
-            {/* FORM */}
-            <div className="grid md:grid-cols-2 gap-6 mb-8">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Select Company</label>
-                <select value={selectedCompanyId} onChange={handleChangeOfSelectedCompany} className="w-full rounded-xl border border-gray-300 px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:outline-none">
-                  <option value="">-- Select Company --</option>
-                  {currentOpening.map(c => (<option key={c.companyShareId} value={c.companyShareId}>{c.companyName} ({c.scrip})</option>))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Total Kitta</label>
-                <input value={applyKitta} onChange={e => setApplyKitta(e.target.value)} placeholder="10, 20, 30..." className="w-full rounded-xl border border-gray-300 px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:outline-none" />
-              </div>
-            </div>
+          <div className="space-y-6">
 
-            {/* ACTION BUTTONS */}
-            <div className="flex gap-4">
-              <button onClick={handleApplyButton} disabled={loading} className={`flex-1 py-4 rounded-xl text-white font-bold text-lg transition ${loading ? "bg-gray-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700 shadow-lg hover:shadow-xl"}`}>
-                {loading ? "Applying IPO..." : "Apply IPO"}
-              </button>
-              {loading && <button onClick={() => { stopRef.current = true; setLoading(false); }} className="px-6 py-4 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold shadow-lg transition">STOP</button>}
-            </div>
+            {/* =================================================
+                APPLICATION CARD
+            ================================================== */}
+            <div className="overflow-hidden rounded-3xl border border-white/80 bg-white shadow-2xl shadow-gray-300/40">
 
-            {/* RESULTS */}
-            {results.length > 0 && (
-              <div className="mt-10 space-y-4">
-                {results.map((r, index) => (
-                  <div key={index} className={`flex items-center justify-between px-6 py-4 rounded-xl shadow-md text-white ${r.status === "success" ? "bg-green-600" : "bg-red-600"}`}>
-                    <span className="font-semibold">{r.name}</span>
-                    <span className="text-sm opacity-90">{r.message}</span>
+              {/* Card Header */}
+              <div className="border-b border-gray-100 bg-gradient-to-r from-blue-50/80 to-indigo-50/80 px-6 py-5 sm:px-8">
+
+                <div className="flex items-center gap-4">
+
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 text-xl text-white shadow-lg shadow-blue-500/20">
+                    📈
                   </div>
-                ))}
+
+                  <div>
+                    <h3 className="font-bold text-gray-900">
+                      Application Details
+                    </h3>
+
+                    <p className="mt-0.5 text-sm text-gray-500">
+                      Select an open IPO and enter the
+                      number of shares.
+                    </p>
+                  </div>
+
+                </div>
+
+              </div>
+
+              {/* Card Body */}
+              <div className="p-6 sm:p-8">
+
+                <div className="grid gap-6 md:grid-cols-2">
+
+                  {/* COMPANY */}
+                  <div>
+
+                    <label className="mb-2.5 block text-sm font-semibold text-gray-700">
+                      Select Company
+                    </label>
+
+                    <div className="relative">
+
+                      <select
+                        value={
+                          selectedCompanyId
+                        }
+                        onChange={
+                          handleChangeOfSelectedCompany
+                        }
+                        disabled={loading}
+                        className="w-full appearance-none rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3.5 pr-10 text-sm font-medium text-gray-800 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        <option value="">
+                          -- Select Company --
+                        </option>
+
+                        {currentOpening.map(
+                          (c) => (
+                            <option
+                              key={
+                                c.companyShareId
+                              }
+                              value={
+                                c.companyShareId
+                              }
+                            >
+                              {c.companyName} (
+                              {c.scrip})
+                            </option>
+                          )
+                        )}
+                      </select>
+
+                      <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">
+                        ▼
+                      </div>
+
+                    </div>
+
+                  </div>
+
+                  {/* KITTA */}
+                  <div>
+
+                    <label className="mb-2.5 block text-sm font-semibold text-gray-700">
+                      Total Kitta
+                    </label>
+
+                    <input
+                      type="number"
+                      min="10"
+                      step="10"
+                      value={applyKitta}
+                      onChange={(e) =>
+                        setApplyKitta(
+                          e.target.value
+                        )
+                      }
+                      disabled={loading}
+                      placeholder="10, 20, 30..."
+                      className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3.5 text-sm font-medium text-gray-800 outline-none transition placeholder:text-gray-400 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 disabled:cursor-not-allowed disabled:opacity-60"
+                    />
+
+                    <p className="mt-2 text-xs text-gray-400">
+                      Enter a quantity in
+                      multiples of 10.
+                    </p>
+
+                  </div>
+
+                </div>
+
+                {/* Divider */}
+                <div className="my-7 border-t border-gray-100"></div>
+
+                {/* BUTTONS */}
+                <div className="flex flex-col gap-3 sm:flex-row">
+
+                  {/* APPLY */}
+                  <button
+                    onClick={
+                      handleApplyButton
+                    }
+                    disabled={loading}
+                    className={`group flex flex-1 items-center justify-center gap-3 rounded-2xl py-4 text-base font-bold text-white shadow-lg transition duration-200 ${
+                      loading
+                        ? "cursor-not-allowed bg-gray-400 shadow-none"
+                        : "bg-gradient-to-r from-blue-600 to-indigo-600 shadow-blue-500/20 hover:-translate-y-0.5 hover:from-blue-700 hover:to-indigo-700 hover:shadow-xl"
+                    }`}
+                  >
+                    {loading ? (
+                      <>
+                        <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/40 border-t-white"></span>
+
+                        Applying IPO...
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-lg">
+                          🚀
+                        </span>
+
+                        Apply IPO
+                      </>
+                    )}
+                  </button>
+
+                  {/* STOP */}
+                  {loading && (
+                    <button
+                      onClick={() => {
+                        stopRef.current = true;
+                        setLoading(false);
+                      }}
+                      className="rounded-2xl bg-red-600 px-8 py-4 text-base font-bold text-white shadow-lg shadow-red-500/20 transition hover:-translate-y-0.5 hover:bg-red-700 hover:shadow-xl"
+                    >
+                      ⛔ STOP
+                    </button>
+                  )}
+
+                </div>
+
+                {/* INFORMATION */}
+                {!loading &&
+                  results.length === 0 && (
+                    <div className="mt-5 flex items-start gap-3 rounded-2xl bg-gray-50 px-4 py-4 text-sm text-gray-500">
+
+                      <span className="mt-0.5 text-base">
+                        ℹ️
+                      </span>
+
+                      <p>
+                        Select the company and enter
+                        your desired Kitta before
+                        starting the application
+                        process.
+                      </p>
+
+                    </div>
+                  )}
+
+              </div>
+            </div>
+
+            {/* =================================================
+                RESULTS
+            ================================================== */}
+            {results.length > 0 && (
+              <div className="overflow-hidden rounded-3xl border border-white/80 bg-white shadow-2xl shadow-gray-300/40">
+
+                {/* RESULTS HEADER */}
+                <div className="flex flex-col gap-3 border-b border-gray-100 px-6 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-8">
+
+                  <div className="flex items-center gap-3">
+
+                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gray-100 text-lg">
+                      📋
+                    </div>
+
+                    <div>
+                      <h3 className="font-bold text-gray-900">
+                        Application Results
+                      </h3>
+
+                      <p className="text-xs text-gray-500">
+                        Status of each user
+                        application
+                      </p>
+                    </div>
+
+                  </div>
+
+                  <div className="rounded-full bg-gray-100 px-4 py-2 text-xs font-bold text-gray-600">
+                    {results.length} /{" "}
+                    {users.length} Processed
+                  </div>
+
+                </div>
+
+                {/* =================================================
+                    RESULT LIST
+                ================================================== */}
+                <div className="space-y-3 p-5 sm:p-6">
+
+                  {results.map(
+                    (r, index) => {
+
+                      // SUCCESS = GREEN
+                      // EVERYTHING ELSE = DARK RED
+                      const isSuccess =
+                        r.status ===
+                        "success";
+
+                      return (
+                        <div
+                          key={index}
+                          className={`flex flex-col gap-4 rounded-2xl border px-5 py-4 shadow-sm transition sm:flex-row sm:items-center sm:justify-between ${
+                            isSuccess
+                              ? "border-green-500 bg-green-100 hover:bg-green-200"
+                              : "border-red-900 bg-red-800 hover:bg-red-900"
+                          }`}
+                        >
+
+                          {/* USER INFORMATION */}
+                          <div className="flex items-center gap-3">
+
+                            {/* NUMBER */}
+                            <div
+                              className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-sm font-bold ${
+                                isSuccess
+                                  ? "bg-green-200 text-green-800"
+                                  : "bg-red-950 text-white"
+                              }`}
+                            >
+                              {index + 1}
+                            </div>
+
+                            {/* NAME */}
+                            <div>
+
+                              <p
+                                className={`font-bold ${
+                                  isSuccess
+                                    ? "text-green-900"
+                                    : "text-white"
+                                }`}
+                              >
+                                {r.name}
+                              </p>
+
+                              <p
+                                className={`text-xs font-medium ${
+                                  isSuccess
+                                    ? "text-green-700"
+                                    : "text-red-200"
+                                }`}
+                              >
+                                {isSuccess
+                                  ? "Application successful"
+                                  : "Application failed"}
+                              </p>
+
+                            </div>
+
+                          </div>
+
+                          {/* STATUS MESSAGE */}
+                          <div
+                            className={`flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold ${
+                              isSuccess
+                                ? "bg-green-200 text-green-800"
+                                : "bg-red-950 text-white"
+                            }`}
+                          >
+
+                            <span
+                              className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white text-xs font-bold ${
+                                isSuccess
+                                  ? "text-green-700"
+                                  : "text-red-700"
+                              }`}
+                            >
+                              {isSuccess
+                                ? "✓"
+                                : "✕"}
+                            </span>
+
+                            {r.message}
+
+                          </div>
+
+                        </div>
+                      );
+                    }
+                  )}
+
+                </div>
               </div>
             )}
+
           </div>
         )}
+
+        {/* =====================================================
+            NO USERS
+        ====================================================== */}
+        {users.length === 0 && (
+          <div className="rounded-3xl border border-white bg-white p-12 text-center shadow-xl">
+
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-gray-100 text-2xl">
+              👥
+            </div>
+
+            <h3 className="mt-5 text-lg font-bold text-gray-900">
+              No Users Found
+            </h3>
+
+            <p className="mt-2 text-sm text-gray-500">
+              Please add users before applying for
+              an IPO.
+            </p>
+
+            <button
+              onClick={() =>
+                navigate("/users")
+              }
+              className="mt-6 rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-lg transition hover:bg-blue-700"
+            >
+              Add Users
+            </button>
+
+          </div>
+        )}
+
+        {/* FOOTER */}
+        <div className="mt-8 text-center text-xs text-gray-400">
+          IPO Dashboard • IPO Application Management
+        </div>
+
       </main>
     </div>
   );
 }
 
 export default ApplyIpo;
+
+
+// import React, { useEffect, useState, useRef } from 'react';
+// import axios from 'axios';
+// import { useNavigate } from "react-router-dom";
+// import { useCallback } from "react";
+
+
+
+
+// function ApplyIpo() {
+//   const backendBaseLink=process.env.REACT_APP_BACKEND_BASE_LINK;
+//   const stopRef = useRef(false);
+//   const mountedRef = useRef(true);
+//   const navigate = useNavigate();
+
+//   // STATE
+//   const [users, setUsers] = useState([]);
+//   const [currentOpening, setCurrentOpening] = useState([]);
+//   const [selectedCompanyId, setSelectedCompanyId] = useState("");
+//   const [applyKitta, setApplyKitta] = useState("");
+//   const [results, setResults] = useState([]);
+//   const [loading, setLoading] = useState(false);
+//   // const [summary, setSummary] = useState({ total:0, AppliedNow:0, AlreadyApplied:0,  });
+
+
+//   const token = localStorage.getItem("token");
+
+//   //Saving Applied Users function
+//   const saveAppliedUsers = async (companyId, clientId, username ) => {
+//     // Record applied IPO in backend
+//         try {await axios.post(`${backendBaseLink}/applyHistory/insertRecordofAppliedIpo`,
+//             {
+//               companyId,
+//               clientId,
+//               username
+//             }
+//           );
+//         } catch (err) {
+//           alert("Something went wrong");
+//         }
+//   }
+
+
+
+
+//   // 🔴 CLEANUP ON UNMOUNT
+//   useEffect(() => {
+//     return () => {
+//       stopRef.current = true;
+//       mountedRef.current = false;
+//     };
+//   }, [backendBaseLink]);
+
+//   // Fetch users
+//   useEffect(() => {
+//     const fetchUsers = async () => {
+//       try {
+//         console.log(backendBaseLink)
+//         const res = await axios.get(`${backendBaseLink}/users`, {
+//           headers: { Authorization: `Bearer ${token}` },
+//         });
+
+//         if (!mountedRef.current) return;
+//         setUsers(res.data);
+
+//         if (res.data.length === 0) {
+//           alert("No users found. Please add users first.");
+//           navigate("/users");
+//         }
+//       } catch {
+//         navigate("/");
+//       }
+//     };
+//     fetchUsers();
+//   }, [ token,navigate, backendBaseLink]);
+
+//   // Login function for first user
+//   const login = useCallback(async () => {
+//     const res = await axios.post(
+//       "https://webbackend.cdsc.com.np/api/meroShare/auth/",
+//       {
+//         clientId: users[0].clientId,
+//         username: users[0].username,
+//         password: users[0].password,
+//       }
+//     );
+//     return res.headers["authorization"];
+//   }, [users]);
+
+//   // Fetch current IPO opening
+//   useEffect(() => {
+//     if (users.length === 0) return;
+
+//     const fetchOpening = async () => {
+//       try {
+//         const savedToken = await login();
+//         const payload = {
+//           filterFieldParams: [
+//             { key: "companyIssue.companyISIN.script", alias: "Scrip" },
+//             { key: "companyIssue.companyISIN.company.name", alias: "Company Name" },
+//             { key: "companyIssue.assignedToClient.name", alias: "Issue Manager", value: "" }
+//           ],
+//           page: 1,
+//           size: 10,
+//           searchRoleViewConstants: "VIEW_APPLICABLE_SHARE",
+//           filterDateParams: [
+//             { key: "minIssueOpenDate", value: "" },
+//             { key: "maxIssueCloseDate", value: "" }
+//           ]
+//         };
+
+//         const res = await axios.post(
+//           "https://webbackend.cdsc.com.np/api/meroShare/companyShare/applicableIssue/",
+//           payload,
+//           { headers: { authorization: savedToken } }
+//         );
+
+//         if (!mountedRef.current) return;
+//         setCurrentOpening(res.data.object);
+//       } catch (err) {
+//         console.log("Error fetching openings:", err.message);
+//       }
+//     };
+
+//     fetchOpening();
+//   }, [users, login]);
+
+//   // Apply IPO for each user
+//   const handleApplyButton = async () => {
+//     stopRef.current = false;
+
+//     if (!selectedCompanyId) return alert("Select Company First");
+//     if (!(applyKitta > 0 && applyKitta % 10 === 0))
+//       return alert("Applied Kitta must be multiple of 10");
+
+//     setResults([]);
+//     setLoading(true);
+
+
+//     const res = await axios.get(
+//       `${backendBaseLink}/applyHistory/${selectedCompanyId}`
+//     );
+//     const appliedUsers = res.data;
+//     console.log(res.data)
+//     console.log(typeof(appliedUsers))
+//     console.log(Array.isArray(appliedUsers))
+    
+
+//     for (let i = 0; i < users.length; i++) {
+//       if (stopRef.current) break;
+
+//       const user = users[i];
+//       const name = user.name;
+//       const crnNumber = user.crn;
+//       const transactionPIN = user.pin;
+      
+
+//       //Check if already applied
+//       const clientKey = `${user.clientId}_${user.username}`;
+//       if (appliedUsers.includes(clientKey)) {
+//         await new Promise(r => setTimeout(r, 300));
+//         if (mountedRef.current) setResults(prev => [...prev, { name, status: "success", message: "Already Applied (History)" }]);
+//         continue;
+//       }
+
+
+//       // Delay 8 sec for each user
+//       for (let t = 0; t < 10; t++) {
+//         if (stopRef.current) break;
+//         await new Promise(r => setTimeout(r, 1000));
+//       }
+
+//       if (stopRef.current) break;
+
+//       try {
+//         const loginRes = await axios.post(
+//           "https://webbackend.cdsc.com.np/api/meroShare/auth/",
+//           {
+//             clientId: user.clientId,
+//             username: user.username,
+//             password: user.password,
+//           }
+//         );
+//         if (!mountedRef.current) return;
+        
+//         if(loginRes.data.accountExpired===true|| loginRes.data.changePassword===true ||loginRes.data.dematExpired===true || loginRes.data.isTransactionPINNotSetBefore===true || loginRes.data.isTransactionPINReset===true ||loginRes.data.passwordExpired===true)
+//           {
+//             setResults(prev => [...prev, { name, status: "error", message: loginRes.data.message }]);
+//             continue;
+//         }
+
+//         const savedToken = loginRes.headers["authorization"];
+
+
+//         // Fetch own detail
+//         const detailRes = await axios.get(
+//           "https://webbackend.cdsc.com.np/api/meroShare/ownDetail/",
+//           { headers: { authorization: savedToken } }
+//         );
+//         const dematNumber = detailRes.data?.demat;
+
+//         const payload1 = {
+//           filterFieldParams: [
+//             { key: "companyIssue.companyISIN.script", alias: "Scrip" },
+//             { key: "companyIssue.companyISIN.company.name", alias: "Company Name" },
+//             { key: "companyIssue.assignedToClient.name", alias: "Issue Manager", value: "" }
+//           ],
+//           page: 1,
+//           size: 10,
+//           searchRoleViewConstants: "VIEW_APPLICABLE_SHARE",
+//           filterDateParams: [
+//             { key: "minIssueOpenDate", value: "" },
+//             { key: "maxIssueCloseDate", value: "" }
+//           ]
+//         };
+
+//         const applicableIssueListRes = await axios.post(
+//           "https://webbackend.cdsc.com.np/api/meroShare/companyShare/applicableIssue/",
+//           payload1,
+//           { headers: { authorization: savedToken } }
+//         );
+
+//         const applicableCompanyDetail = applicableIssueListRes.data.object.find(item => item.companyShareId === Number(selectedCompanyId));
+
+//         if ("action" in applicableCompanyDetail) {
+//           if (applicableCompanyDetail.action === "inProcess" || applicableCompanyDetail.action === "edit") {
+//             if (mountedRef.current) setResults(prev => [...prev, { name, status: "success", message: "Already Applied" }]);
+//           }
+
+//           if (applicableCompanyDetail.action === "reapply") {
+//             if (mountedRef.current) setResults(prev => [...prev, { name, status: "error", message: "Reapply" }]);
+//           }
+//           await saveAppliedUsers(selectedCompanyId, user.clientId, user.username);
+//           continue
+//         }
+
+//         // Fetch bank info
+//         const bankRes = await axios.get(
+//           "https://webbackend.cdsc.com.np/api/meroShare/bank/",
+//           { headers: { authorization: savedToken } }
+//         );
+//         let selectedBankId = bankRes.data[0]?.id;
+//         if (bankRes.data.length === 2) {
+//           selectedBankId = bankRes.data[1]?.id;
+//         }
+
+//         // Check applicability
+//         const applicableRes = await axios.get(
+//           `https://webbackend.cdsc.com.np/api/meroShare/applicantForm/customerType/${selectedCompanyId}/${dematNumber}`,
+//           { headers: { authorization: savedToken } }
+//         );
+//         if (applicableRes.data.message !== "Customer can apply.") {
+//           if (mountedRef.current) setResults(prev => [...prev, { name, status: "error", message: applicableRes.data.message }]);
+//           continue;
+//         }
+
+//         // Fetch bank details
+//         const bankDetailRes = await axios.get(
+//           `https://webbackend.cdsc.com.np/api/meroShare/bank/${selectedBankId}`,
+//           { headers: { authorization: savedToken } }
+//         );
+//         const bd = bankDetailRes.data[0];
+
+//         // Final payload
+//         const payload = {
+//           accountBranchId: bd?.accountBranchId,
+//           accountNumber: bd?.accountNumber,
+//           accountTypeId: bd?.accountTypeId,
+//           appliedKitta: applyKitta,
+//           bankId: String(selectedBankId),
+//           boid: String(dematNumber).slice(-8),
+//           companyShareId: selectedCompanyId,
+//           crnNumber,
+//           customerId: bd?.id,
+//           demat: dematNumber,
+//           transactionPIN,
+//         };
+
+
+//         // Submit IPO
+//         const submitRes = await axios.post(
+//           "https://webbackend.cdsc.com.np/api/meroShare/applicantForm/share/apply",
+//           payload,
+//           { headers: { authorization: savedToken, "Content-Type": "application/json" } }
+//         );
+
+//         if (mountedRef.current) {
+//           setResults(prev => [...prev, { name, status: submitRes.status === 201 ? "success" : "error", message: submitRes.data.message || "Something went wrong" }]);
+//         }
+
+//         // Record applied IPO in backend
+//         await saveAppliedUsers(selectedCompanyId, user.clientId, user.username);
+
+
+
+//       } catch (err) {
+//         if (!mountedRef.current) return;
+//         setResults(prev => [...prev, { name, status: "error", message: err.response?.data?.message || err.message }]);
+//       }
+
+//       if (stopRef.current) break;
+//       await new Promise(resolve => setTimeout(resolve, 500));
+//     }
+
+//     if (mountedRef.current) setLoading(false);
+//   };
+
+
+//   const handleChangeOfSelectedCompany = async (e) => {
+//     const selectedValue = e.target.value;
+//     setSelectedCompanyId(selectedValue);
+
+//     if (!selectedValue) return;
+
+//   }
+//   return (
+//     <div className="min-h-screen bg-gradient-to-br from-slate-100 to-slate-200">
+//       {/* ===== NAVBAR ===== */}
+//       <header className="sticky top-0 z-50 bg-white/80 backdrop-blur shadow-sm">
+//         <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
+//           <h1 onClick={() => { stopRef.current = true; navigate("/home"); }} className="text-xl font-bold text-blue-600 cursor-pointer hover:opacity-80">
+//             IPO Dashboard
+//           </h1>
+//           <div className="flex gap-3">
+//             <button onClick={() => { stopRef.current = true; navigate("/home"); }} className="px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium transition">Home</button>
+//             <button onClick={() => { stopRef.current = true; localStorage.removeItem("token"); navigate("/", { replace: true }); }} className="px-4 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white font-medium transition">Logout</button>
+//           </div>
+//         </div>
+//       </header>
+
+//       {/* ===== MAIN CONTENT ===== */}
+//       <main className="max-w-5xl mx-auto px-6 py-10">
+//         <div className="mb-10 text-center">
+//           <h2 className="text-3xl font-extrabold text-gray-800">Apply IPO</h2>
+//           <p className="text-gray-500 mt-2">Apply IPO for all registered users in one click</p>
+//         </div>
+
+//         {users.length > 0 && (
+//           <div className="bg-white rounded-3xl shadow-2xl p-8">
+//             {/* FORM */}
+//             <div className="grid md:grid-cols-2 gap-6 mb-8">
+//               <div>
+//                 <label className="block text-sm font-semibold text-gray-700 mb-2">Select Company</label>
+//                 <select value={selectedCompanyId} onChange={handleChangeOfSelectedCompany} className="w-full rounded-xl border border-gray-300 px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+//                   <option value="">-- Select Company --</option>
+//                   {currentOpening.map(c => (<option key={c.companyShareId} value={c.companyShareId}>{c.companyName} ({c.scrip})</option>))}
+//                 </select>
+//               </div>
+//               <div>
+//                 <label className="block text-sm font-semibold text-gray-700 mb-2">Total Kitta</label>
+//                 <input value={applyKitta} onChange={e => setApplyKitta(e.target.value)} placeholder="10, 20, 30..." className="w-full rounded-xl border border-gray-300 px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+//               </div>
+//             </div>
+
+//             {/* ACTION BUTTONS */}
+//             <div className="flex gap-4">
+//               <button onClick={handleApplyButton} disabled={loading} className={`flex-1 py-4 rounded-xl text-white font-bold text-lg transition ${loading ? "bg-gray-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700 shadow-lg hover:shadow-xl"}`}>
+//                 {loading ? "Applying IPO..." : "Apply IPO"}
+//               </button>
+//               {loading && <button onClick={() => { stopRef.current = true; setLoading(false); }} className="px-6 py-4 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold shadow-lg transition">STOP</button>}
+//             </div>
+
+//             {/* RESULTS */}
+//             {results.length > 0 && (
+//               <div className="mt-10 space-y-4">
+//                 {results.map((r, index) => (
+//                   <div key={index} className={`flex items-center justify-between px-6 py-4 rounded-xl shadow-md text-white ${r.status === "success" ? "bg-green-600" : "bg-red-600"}`}>
+//                     <span className="font-semibold">{r.name}</span>
+//                     <span className="text-sm opacity-90">{r.message}</span>
+//                   </div>
+//                 ))}
+//               </div>
+//             )}
+//           </div>
+//         )}
+//       </main>
+//     </div>
+//   );
+// }
+
+// export default ApplyIpo;
