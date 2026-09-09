@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import Header from "../components/Header";
+import Footer from "../components/Footer";
 
 const Users = () => {
   const navigate = useNavigate();
@@ -162,11 +164,7 @@ const Users = () => {
     }
   };
 
-  // Logout
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    navigate("/", { replace: true });
-  };
+  
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
@@ -178,39 +176,7 @@ const Users = () => {
         </div>
       )}
 
-      {/* Header */}
-      <header className="sticky top-0 z-40 border-b border-white/60 bg-white/80 shadow-sm backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
-
-          <div>
-            <h1 className="text-xl font-bold tracking-tight text-gray-900 sm:text-2xl">
-              IPO Dashboard
-            </h1>
-
-            <p className="text-xs text-gray-500 sm:text-sm">
-              User Management
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2 sm:gap-3">
-
-            <button
-              onClick={() => navigate("/home")}
-              className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50"
-            >
-              Home
-            </button>
-
-            <button
-              onClick={handleLogout}
-              className="rounded-xl bg-gray-900 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-gray-800"
-            >
-              Logout
-            </button>
-
-          </div>
-        </div>
-      </header>
+      <Header />
 
       {/* Main */}
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -633,6 +599,7 @@ const Users = () => {
         </div>
 
       </main>
+      <Footer />
     </div>
   );
 };
@@ -640,178 +607,3 @@ const Users = () => {
 export default Users;
 
  
-
-//   /* ================= UI ================= */
-//   return (
-//     <div className="min-h-screen bg-gray-100">
-//       {/* ===== HEADER ===== */}
-//       <header className="sticky top-0 z-50 bg-white/80 backdrop-blur shadow-sm">
-//         <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
-//           <h1
-//             className="text-xl font-bold text-blue-600 cursor-pointer hover:opacity-80"
-//             onClick={() => navigate("/home")}
-//           >
-//             IPO Dashboard
-//           </h1>
-//           <div className="flex gap-3">
-//             <button
-//               onClick={() => navigate("/home")}
-//               className="px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium"
-//             >
-//               Home
-//             </button>
-//             <button
-//               onClick={() => {
-//                 localStorage.removeItem("token");
-//                 navigate("/", { replace: true });
-//               }}
-//               className="px-4 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white font-medium"
-//             >
-//               Logout
-//             </button>
-//           </div>
-//         </div>
-//       </header>
-
-//       {/* ===== MAIN CONTENT ===== */}
-//       <main className="max-w-7xl mx-auto p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-//         {/* ===== FORM CARD ===== */}
-//         <div className="bg-white rounded-xl shadow p-6">
-//           <h2 className="text-lg font-semibold mb-4">
-//             {editId ? "Edit Record" : "Add New Record"}
-//           </h2>
-
-//           <form onSubmit={handleSubmit} className="space-y-3">
-//             <input
-//               name="name"
-//               ref={nameRef}
-//               value={form.name}
-//               onChange={handleChange}
-//               placeholder="NAME"
-//               required
-//               className="w-full border rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none"
-//             />
-            
-//             <select
-//               name="clientId"
-//               value={form.clientId}
-//               onChange={handleChange}
-//               required
-//               className="w-full border rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none"
-//             >
-//               <option value="">-- Select Capital --</option>
-//               {companies.map((company) => (
-//                 <option key={company.id} value={company.id}>
-//                   {company.name}
-//                 </option>
-//               ))}
-//             </select>
-//             <input
-//               name="username"
-//               value={form.username}
-//               onChange={handleChange}
-//               placeholder="USERNAME"
-//               required
-//               className="w-full border rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none"
-//             />
-//             <input
-//               name="password"
-//               value={form.password}
-//               onChange={handleChange}
-//               placeholder="PASSWORD"
-//               required
-//               className="w-full border rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none"
-//             />
-//             <input
-//               name="crn"
-//               value={form.crn}
-//               onChange={handleChange}
-//               placeholder="CRN"
-//               required
-//               className="w-full border rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none"
-//             />
-//             <input
-//               name="pin"
-//               value={form.pin}
-//               onChange={handleChange}
-//               placeholder="PIN"
-//               required
-//               className="w-full border rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none"
-//             />
-//             <input
-//               name="tms"
-//               value={form.tms}
-//               onChange={handleChange}
-//               placeholder="TMS"
-//               required
-//               className="w-full border rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none"
-//             />
-
-//             <button className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700">
-//               {editId ? "Update Record" : "Add Record"}
-//             </button>
-
-//             {editId && (
-//               <button
-//                 type="button"
-//                 onClick={resetForm}
-//                 className="w-full bg-gray-300 py-2 rounded-lg hover:bg-gray-400"
-//               >
-//                 Cancel Edit
-//               </button>
-//             )}
-//           </form>
-//         </div>
-
-//         {/* ===== TABLE CARD ===== */}
-//         <div className="lg:col-span-2 bg-white rounded-xl shadow p-6 overflow-x-auto">
-//           <h2 className="text-lg font-semibold mb-4">My Records</h2>
-
-//           <table className="w-full border-collapse">
-//             <thead>
-//               <tr className="bg-gray-100 text-left">
-//                 <th className="p-3">Name</th>
-//                 <th className="p-3">Client ID</th>
-//                 <th className="p-3">Username</th>
-//                 <th className="p-3">Password</th>
-//                 <th className="p-3">CRN</th>
-//                 <th className="p-3">PIN</th>
-//                 <th className="p-3">TMS</th>
-//                 <th className="p-3">Actions</th>
-//               </tr>
-//             </thead>
-//             <tbody>
-//               {data.map((d) => (
-//                 <tr key={d._id} className="border-t hover:bg-gray-50 transition">
-//                   <td className="p-3">{d.name}</td>
-//                   <td className="p-3">{d.clientId}</td>
-//                   <td className="p-3">{d.username}</td>
-//                   <td className="p-3">{d.password}</td>
-//                   <td className="p-3">{d.crn}</td>
-//                   <td className="p-3">{d.pin}</td>
-//                   <td className="p-3">{d.tms}</td>
-//                   <td className="p-3 flex gap-2">
-//                     <button
-//                       onClick={() => editRecord(d)}
-//                       className="bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-600"
-//                     >
-//                       Edit
-//                     </button>
-//                     <button
-//                       onClick={() => deleteRecord(d._id)}
-//                       className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
-//                     >
-//                       Delete
-//                     </button>
-//                   </td>
-//                 </tr>
-//               ))}
-//             </tbody>
-//           </table>
-//         </div>
-
-//       </main>
-//     </div>
-//   );
-// }
