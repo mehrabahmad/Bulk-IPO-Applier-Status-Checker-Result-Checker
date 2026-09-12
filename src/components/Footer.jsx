@@ -32,7 +32,7 @@ const Footer = () => {
               </div>
 
               <div>
-                <p className="font-black text-white">IPO Dashboard</p>
+                <p className="font-black text-white">BULK IPO</p>
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
                   Investment Platform
                 </p>
@@ -144,7 +144,7 @@ const Footer = () => {
         <div className="mt-10 border-t border-slate-800 pt-6">
           <div className="flex flex-col gap-4 text-center text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between sm:text-left">
             <p>
-              © {new Date().getFullYear()} IPO Dashboard. All rights reserved.
+              © {new Date().getFullYear()} BULK IPO. All rights reserved.
             </p>
 
             <p>

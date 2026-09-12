@@ -58,7 +58,7 @@ const Header = () => {
 
           <div className="text-left">
             <p className="text-base font-black leading-tight text-slate-900 sm:text-lg">
-              IPO Dashboard
+              BULK IPO
             </p>
 
             <p className="hidden text-[9px] font-bold uppercase tracking-[0.18em] text-slate-400 sm:block">

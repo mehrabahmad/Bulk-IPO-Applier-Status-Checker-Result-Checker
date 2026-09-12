@@ -470,15 +470,7 @@ const LandingPage = () => {
               requests to help prevent unauthorized access to your dashboard.
             </p>
 
-            <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-4">
-              <p className="text-sm leading-6 text-amber-800">
-                <span className="font-black">Important:</span> Only advertise
-                encryption or security protections that are actually implemented
-                in your production system. HTTPS, secure password storage,
-                database protection and proper access controls should be
-                verified before making stronger security claims.
-              </p>
-            </div>
+            
           </div>
         </div>
       </section>

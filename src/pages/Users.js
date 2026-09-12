@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import Header from "../components/Header";
@@ -39,28 +39,28 @@ const Users = () => {
   };
 
   // Fetch users
-  const fetchData = async () => {
-    try {
-      const response = await axios.get(`${API}/users`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+  const fetchData = useCallback(async () => {
+  try {
+    const response = await axios.get(`${API}/users`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
 
-      setUsers(response.data);
-    } catch (error) {
-      console.error("Error fetching users:", error);
+    setUsers(response.data);
+  } catch (error) {
+    console.error("Error fetching users:", error);
 
-      if (error.response?.status === 401) {
-        localStorage.removeItem("token");
-        navigate("/", { replace: true });
-      }
+    if (error.response?.status === 401) {
+      localStorage.removeItem("token");
+      navigate("/", { replace: true });
     }
-  };
+  }
+}, [API, token, navigate]);
 
   useEffect(() => {
-    fetchData();
-  }, []);
+  fetchData();
+}, [fetchData]);
 
   // Handle input
   const handleChange = (e) => {
